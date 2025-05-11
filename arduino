@@ -1,0 +1,91 @@
+#include <PID_v1.h>       // Biblioteca do PID
+#include <DHT.h>          // Biblioteca do DHT11
+
+#define LAMPADA 3         // Pino da lâmpada (PWM)
+#define DHTPIN 8          // Pino do sensor DHT11
+#define DHTTYPE DHT11     // Tipo do sensor
+#define TRIGGER_PIN 9     // Pino Trigger do sensor ultrassônico
+#define ECHO_PIN 10       // Pino Echo do sensor ultrassônico
+
+DHT dht(DHTPIN, DHTTYPE);
+
+// Variáveis do PID
+double Setpoint = 35;  // Começa em 30°C
+double Input, Output;
+
+double Kp = 5.8824, Ki = 0.09466, Kd = 0;
+
+PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
+
+// Variáveis de tempo
+const long intervalo1 = 900000;    
+const long intervalo2 = 1800000;  
+const long intervalo3 = 2700000;
+const long intervalo4 = 3600000;    
+
+void setup() {
+    Serial.begin(9600);
+    dht.begin();
+    
+    pinMode(LAMPADA, OUTPUT);
+    pinMode(TRIGGER_PIN, OUTPUT);
+    pinMode(ECHO_PIN, INPUT);
+    
+    myPID.SetMode(AUTOMATIC);
+    myPID.SetOutputLimits(0, 255);  // PWM entre 0 e 255
+}
+
+void loop() {
+    unsigned long contagem = millis();
+
+    if (contagem >= intervalo1) {
+        Setpoint = 20;           
+    }
+
+    if (contagem >= intervalo2) {
+        Setpoint = 35;       
+    }
+
+    if (contagem >= intervalo3) {
+        Setpoint = 50;   
+    } 
+    
+    if (contagem >= intervalo4) {
+        Setpoint = 35;    
+    }       
+
+    // Lê a temperatura atual
+    Input = dht.readTemperature();
+    
+    if (isnan(Input)) {
+        Serial.println("Erro ao ler o sensor DHT11!");
+        return;
+    }
+
+    // Atualiza o PID
+    myPID.Compute();
+    
+    // Mapeia para PWM (0-255)
+    int pwmValue = map(Output, 45, 0, 255, 0);
+    pwmValue = constrain(pwmValue, 0, 255);
+
+    analogWrite(LAMPADA, pwmValue);
+    
+    // Leitura do sensor ultrassônico
+    digitalWrite(TRIGGER_PIN, LOW);
+    delayMicroseconds(2);
+    digitalWrite(TRIGGER_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIGGER_PIN, LOW);
+    
+    long duration = pulseIn(ECHO_PIN, HIGH);
+    
+    // Exibe informações no serial
+    Serial.print(duration);
+    Serial.print("; ");
+    Serial.print(Input);
+    Serial.print("; ");
+    Serial.println(pwmValue);
+
+    delay(1000); // Aguarda 1 segundo
+}
