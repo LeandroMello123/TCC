@@ -1,0 +1,60 @@
+import serial
+import time
+import csv
+
+# Defina a porta serial correta - ajuste conforme necessário
+porta_serial = 'COM6'  # Exemplo para Windows
+
+# Inicializa a comunicação serial
+ser = serial.Serial(porta_serial, 9600, timeout=1)
+
+# Nome do arquivo CSV para salvar os dados
+nome_arquivo_csv = 'dados_arduino.csv'
+
+# Abre o arquivo CSV em modo de escrita
+with open(nome_arquivo_csv, mode='w', newline='') as file:
+    writer = csv.writer(file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(['Tempo de Voo (ms)', 'Temperatura (°C)', 'PID'])  # Cabeçalho ajustado
+
+    try:
+        while True:
+            # Lê uma linha da porta serial
+            line = ser.readline().strip().decode('utf-8')
+
+            # Verifica se a linha tem dados e separa usando ponto e vírgula
+            if line:
+                data = line.split(';')
+
+                # Verifica se temos 3 dados (tempo de voo, temperatura e PID)
+                if len(data) == 3:
+                    try:
+                        # Converte os dados para os tipos corretos
+                        tempo_voo = int(data[0])  # Tempo de voo como inteiro
+                        temperatura = float(data[1])  # Temperatura como float
+                        PID = float(data[2])  # PID como float
+
+                        # Converte os números para string e substitui "." por ","
+                        temperatura_str = f"{temperatura:.2f}".replace('.', ',')
+                        PID_str = f"{PID:.2f}".replace('.', ',')
+
+                        # Escreve os dados no arquivo CSV com separação por ponto e vírgula
+                        writer.writerow([tempo_voo, temperatura_str, PID_str])
+
+                        # Exibe os dados recebidos (opcional)
+                        print(f"Temperatura: {temperatura_str} °C, Tempo de Voo: {tempo_voo} ms, PID: {PID_str}")
+
+                    except ValueError as e:
+                        print(f"Erro ao converter dados recebidos: {e}")
+                else:
+                    print(f"Dados inválidos recebidos: {line}")
+            else:
+                print("Linha vazia recebida.")
+
+            # Pequeno intervalo para não sobrecarregar o sistema
+            time.sleep(0.1)
+
+    except KeyboardInterrupt:
+        print("Interrupção pelo usuário")
+
+# Fecha a conexão serial
+ser.close()
